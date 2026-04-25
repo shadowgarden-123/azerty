@@ -3,224 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ULTIMATE PIXEL LIFE TYCOON</title>
+    <title>ULTIMATE LIFE SIMULATOR 3D</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#00ff00">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
     <style>
-        :root { 
-            --gold: #f1c40f; --blue: #3498db; --green: #2ecc71; 
-            --red: #e74c3c; --dark: #1a1a1a; --card: #2c3e50;
-        }
-        body { 
-            background: var(--dark); color: #eee; font-family: 'Courier New', monospace; 
-            margin: 0; display: flex; justify-content: center; padding: 20px;
-        }
-        #game-container { width: 600px; background: #34495e; border: 8px solid #000; padding: 20px; box-shadow: 15px 15px 0 #000; }
-        
-        /* HEADER & STATS */
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; background: rgba(0,0,0,0.3); padding: 15px; border: 4px solid #000; }
-        .stat-box { font-size: 14px; font-weight: bold; }
-        .bar { width: 100%; height: 12px; background: #000; border: 2px solid #555; margin-top: 5px; position: relative; }
-        .fill { height: 100%; transition: width 0.3s; }
+        :root { --accent: #00ff00; --bg-overlay: rgba(0, 0, 0, 0.85); }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: #000; overflow: hidden; color: white; }
+        canvas { display: block; width: 100vw; height: 100vh; }
 
-        /* TABS */
-        .tabs { display: flex; gap: 5px; margin-bottom: 15px; }
-        .tab-btn { flex: 1; padding: 10px; border: 4px solid #000; cursor: pointer; font-weight: bold; font-family: inherit; font-size: 12px; background: #95a5a6; }
-        .tab-btn.active { background: var(--gold); transform: translateY(-3px); box-shadow: 0 3px 0 #000; }
+        /* HUD & UI */
+        .hud { position: fixed; z-index: 10; pointer-events: none; }
+        .interactive { pointer-events: auto; }
 
-        /* CARDS */
-        .panel { display: none; height: 350px; overflow-y: auto; padding-right: 10px; }
-        .panel.active { display: block; }
-        .card { 
-            background: var(--card); border: 4px solid #000; padding: 15px; margin-bottom: 10px;
-            display: flex; align-items: center; gap: 15px; transition: 0.2s;
-        }
-        .card:hover { background: #3e5871; }
-        .card-icon { font-size: 40px; background: rgba(0,0,0,0.2); padding: 10px; border: 2px solid #000; }
-        .card-content { flex: 1; }
-        .card-title { font-weight: bold; color: var(--gold); font-size: 16px; display: block; }
-        .card-desc { font-size: 11px; color: #bdc3c7; display: block; margin: 4px 0; }
-        .card-cost { font-size: 12px; font-weight: bold; color: var(--green); }
+        /* TOP BAR */
+        .top-bar { top: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; }
+        .stat-group { background: var(--bg-overlay); padding: 10px 20px; border-radius: 5px; border-left: 4px solid var(--accent); }
+        .money { color: var(--accent); font-size: 24px; font-weight: bold; }
 
-        button.action-btn { 
-            background: #ecf0f1; border: 3px solid #000; padding: 8px 12px; cursor: pointer;
-            font-weight: bold; font-family: inherit; font-size: 12px;
-        }
-        button:disabled { opacity: 0.3; cursor: not-allowed; }
+        /* LANGUAGE TOGGLE */
+        .lang-switch { top: 20px; left: 20px; }
+        button.ui-btn { background: #333; color: white; border: 1px solid var(--accent); padding: 5px 15px; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        button.ui-btn:hover { background: var(--accent); color: black; }
 
-        #event-log { height: 60px; background: #000; padding: 10px; font-size: 12px; color: var(--green); border: 2px solid #555; overflow: hidden; }
-        .money-display { font-size: 32px; text-align: center; color: var(--green); margin: 10px 0; text-shadow: 2px 2px #000; }
+        /* SIDE MENU (TABLET STYLE) */
+        .side-menu { right: 20px; top: 100px; width: 280px; background: var(--bg-overlay); border: 2px solid #333; padding: 15px; border-radius: 10px; max-height: 80vh; overflow-y: auto; }
+        .menu-title { font-size: 14px; color: var(--accent); margin-bottom: 10px; text-transform: uppercase; border-bottom: 1px solid #444; }
+        .menu-item { background: #222; margin-bottom: 8px; padding: 10px; border-radius: 5px; border: 1px solid transparent; }
+        .menu-item:hover { border-color: var(--accent); }
+        .menu-item h4 { font-size: 13px; }
+        .menu-item p { font-size: 10px; color: #aaa; margin: 4px 0; }
+
+        /* MINIMAP */
+        .minimap { bottom: 20px; right: 20px; width: 150px; height: 150px; background: #000; border: 2px solid var(--accent); border-radius: 50%; overflow: hidden; }
+
+        .hidden { display: none; }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2 style="margin:0; font-size: 18px;">👴 ÂGE: <span id="age">16</span> ANS</h2>
-        <div id="rank" style="color: var(--gold);">RANG: CITOYEN</div>
+    <canvas id="canvas"></canvas>
+
+    <div class="hud lang-switch interactive">
+        <button class="ui-btn" onclick="toggleLanguage()">FR / EN</button>
     </div>
 
-    <div class="money-display">$<span id="money">500</span></div>
-
-    <div class="stats-grid">
-        <div class="stat-box">⚡ ÉNERGIE
-            <div class="bar"><div id="bar-energy" class="fill" style="background: var(--gold); width: 100%;"></div></div>
+    <div class="hud top-bar">
+        <div class="stat-group">
+            <span id="label-money" style="font-size: 10px;">ARGENT / MONEY</span><br>
+            <span class="money">$<span id="val-money">500</span></span>
         </div>
-        <div class="stat-box">📚 SAVOIR
-            <div class="bar"><div id="bar-skill" class="fill" style="background: var(--blue); width: 0%;"></div></div>
-        </div>
-        <div class="stat-box">😊 BONHEUR
-            <div class="bar"><div id="bar-happy" class="fill" style="background: var(--green); width: 80%;"></div></div>
-        </div>
-        <div class="stat-box">🏠 LOGEMENT: <span id="house-name" style="color:var(--gold)">Rue</span></div>
-    </div>
-
-    <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('study')">ÉTUDES</button>
-        <button class="tab-btn" onclick="switchTab('work')">Boulot</button>
-        <button class="tab-btn" onclick="switchTab('shop')">INVESTIR</button>
-        <button class="tab-btn" onclick="switchTab('life')">VIVRE</button>
-    </div>
-
-    <div id="panel-study" class="panel active"></div>
-    <div id="panel-work" class="panel"></div>
-    <div id="panel-shop" class="panel"></div>
-    <div id="panel-life" class="panel" style="text-align: center;">
-        <div class="card">
-            <div class="card-icon">💤</div>
-            <div class="card-content">
-                <span class="card-title">Dormir & Finir l'Année</span>
-                <span class="card-desc">Récupère 100% d'énergie et encaisse tes revenus passifs.</span>
-            </div>
-            <button class="action-btn" onclick="nextYear()">DORMIR</button>
+        <div class="stat-group" style="text-align: right;">
+            <span id="label-age" style="font-size: 10px;">ÂGE</span><br>
+            <span id="val-age" style="font-size: 20px; font-weight: bold;">18</span>
         </div>
     </div>
 
-    <div id="event-log">> Bienvenue à Pixel City. Ta vie commence ici.</div>
-</div>
-
-<script>
-    let state = {
-        age: 16, money: 500, energy: 100, skill: 0, happy: 80,
-        passive: 0, bonusStudy: 1, 
-        currentHouse: "Carton"
-    };
-
-    const studyOptions = [
-        { name: "Tutos YouTube", icon: "📱", gain: 5, e: 15, m: 0, req: 0, desc: "Apprendre les bases gratuitement." },
-        { name: "Lycée Technique", icon: "🏫", gain: 20, e: 30, m: 100, req: 30, desc: "Un diplôme reconnu par l'état." },
-        { name: "École de Code", icon: "💻", gain: 60, e: 40, m: 1000, req: 150, desc: "Deviens un sorcier du clavier." },
-        { name: "Université Elite", icon: "🏛️", gain: 150, e: 60, m: 5000, req: 500, desc: "Pour les futurs maîtres du monde." }
-    ];
-
-    const workOptions = [
-        { name: "Vendeur de Burger", icon: "🍔", pay: 50, e: 20, h: -5, req: 0, desc: "C'est dur, ça sent l'huile." },
-        { name: "Livreur à Vélo", icon: "🚲", pay: 120, e: 35, h: -2, req: 40, desc: "Garde la forme et gagne du cash." },
-        { name: "Streamer Débutant", icon: "🎮", pay: 300, e: 40, h: 10, req: 200, desc: "Jouer et être payé ? Le rêve." },
-        { name: "Architecte Senior", icon: "📐", pay: 1200, e: 50, h: -10, req: 800, desc: "Construis le futur de la ville." },
-        { name: "CEO Startup", icon: "🚀", pay: 5000, e: 70, h: -20, req: 2000, desc: "Stress maximum, salaire maximum." }
-    ];
-
-    const shopOptions = [
-        { name: "Appartement T2", icon: "🏢", pass: 0, m: 10000, h: 20, desc: "Quitte enfin la rue." },
-        { name: "Action Bourse", icon: "📈", pass: 200, m: 2000, h: 0, desc: "L'argent travaille pour toi." },
-        { name: "Villa Luxe", icon: "🏰", pass: 0, m: 150000, h: 50, desc: "Le sommet de la réussite." }
-    ];
-
-    function switchTab(tab) {
-        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('panel-' + tab).classList.add('active');
-        event.currentTarget.classList.add('active');
-        render();
-    }
-
-    function render() {
-        // Render Study
-        const sP = document.getElementById('panel-study');
-        sP.innerHTML = studyOptions.map(o => createCard(o, 'study')).join('');
-        // Render Work
-        const wP = document.getElementById('panel-work');
-        wP.innerHTML = workOptions.map(o => createCard(o, 'work')).join('');
-        // Render Shop
-        const shP = document.getElementById('panel-shop');
-        shP.innerHTML = shopOptions.map(o => createCard(o, 'shop')).join('');
-
-        // Stats UI
-        document.getElementById('money').innerText = state.money;
-        document.getElementById('age').innerText = state.age;
-        document.getElementById('bar-energy').style.width = state.energy + "%";
-        document.getElementById('bar-skill').style.width = Math.min(state.skill/25, 100) + "%";
-        document.getElementById('bar-happy').style.width = state.happy + "%";
-    }
-
-    function createCard(obj, type) {
-        let disabled = false;
-        let costLabel = "";
+    <div class="hud side-menu interactive">
+        <div class="menu-title" id="title-career">Carrière / Career</div>
+        <div id="job-list"></div>
         
-        if (type === 'study') {
-            disabled = state.energy < obj.e || state.money < obj.m || state.skill < obj.req;
-            costLabel = `${obj.e}⚡ | $${obj.m}`;
-        } else if (type === 'work') {
-            disabled = state.energy < obj.e || state.skill < obj.req;
-            costLabel = `${obj.e}⚡ | +$${obj.pay}`;
-        } else {
-            disabled = state.money < obj.m;
-            costLabel = `$${obj.m}`;
+        <div class="menu-title" id="title-study" style="margin-top:20px">Études / Study</div>
+        <div id="study-list"></div>
+    </div>
+
+    <div class="hud minimap"></div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').then(reg => console.log('PWA Ready'));
+            });
+        }
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // --- LOGIQUE DE TRADUCTION ---
+        let currentLang = 'fr';
+        const i18n = {
+            fr: {
+                money: "ARGENT", age: "ÂGE", career: "CARRIÈRE", study: "ÉTUDES",
+                jobs: [
+                    { n: "Livreur", d: "Course rapide en ville", p: 50, req: 0 },
+                    { n: "Développeur Jr", d: "Coder des apps 3D", p: 250, req: 100 },
+                    { n: "Architecte", d: "Bâtir le futur", p: 900, req: 500 }
+                ],
+                studies: [
+                    { n: "Cours en ligne", d: "Bases du savoir", cost: 0, g: 20 },
+                    { n: "Université", d: "Diplôme supérieur", cost: 2000, g: 150 }
+                ]
+            },
+            en: {
+                money: "MONEY", age: "AGE", career: "CAREER", study: "STUDY",
+                jobs: [
+                    { n: "Delivery Driver", d: "Fast city courier", p: 50, req: 0 },
+                    { n: "Jr Developer", d: "Code 3D apps", p: 250, req: 100 },
+                    { n: "Architect", d: "Build the future", p: 900, req: 500 }
+                ],
+                studies: [
+                    { n: "Online Courses", d: "Basic knowledge", cost: 0, g: 20 },
+                    { n: "University", d: "Higher degree", cost: 2000, g: 150 }
+                ]
+            }
+        };
+
+        // --- ETAT DU JEU ---
+        let state = { money: 500, age: 18, skill: 0 };
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'fr' ? 'en' : 'fr';
+            updateUI();
         }
 
-        return `
-            <div class="card" style="${state.skill < obj.req && type !== 'shop' ? 'filter:grayscale(1); opacity:0.6' : ''}">
-                <div class="card-icon">${obj.icon}</div>
-                <div class="card-content">
-                    <span class="card-title">${obj.name}</span>
-                    <span class="card-desc">${obj.desc}</span>
-                    <span class="card-cost">${costLabel}</span>
+        function updateUI() {
+            const t = i18n[currentLang];
+            document.getElementById('label-money').innerText = t.money;
+            document.getElementById('label-age').innerText = t.age;
+            document.getElementById('title-career').innerText = t.career;
+            document.getElementById('title-study').innerText = t.study;
+            document.getElementById('val-money').innerText = state.money;
+
+            // Render Jobs
+            const jobList = document.getElementById('job-list');
+            jobList.innerHTML = t.jobs.map(j => `
+                <div class="menu-item" style="opacity: ${state.skill >= j.req ? 1 : 0.5}">
+                    <h4>${j.n}</h4>
+                    <p>${j.d}</p>
+                    <button class="ui-btn" style="width:100%" onclick="work(${j.p})" ${state.skill < j.req ? 'disabled' : ''}>$${j.p}</button>
                 </div>
-                <button class="action-btn" onclick="execute('${type}', '${obj.name}')" ${disabled ? 'disabled' : ''}>CHOISIR</button>
-            </div>
-        `;
-    }
+            `).join('');
 
-    function execute(type, name) {
-        let obj;
-        if(type === 'study') {
-            obj = studyOptions.find(o => o.name === name);
-            state.energy -= obj.e; state.money -= obj.m; state.skill += obj.gain;
-            log(`Tu as étudié ${name}. Ton cerveau fume !`);
-        } else if(type === 'work') {
-            obj = workOptions.find(o => o.name === name);
-            state.energy -= obj.e; state.money += obj.pay; state.happy += obj.h;
-            log(`Job : ${name}. Tu as gagné $${obj.pay}.`);
-        } else if(type === 'shop') {
-            obj = shopOptions.find(o => o.name === name);
-            state.money -= obj.m; state.passive += (obj.pass || 0); state.happy += (obj.h || 0);
-            if(name.includes("Appartement") || name.includes("Villa")) state.currentHouse = name;
-            log(`Achat : ${name}. Félicitations !`);
+            // Render Studies
+            const studyList = document.getElementById('study-list');
+            studyList.innerHTML = t.studies.map(s => `
+                <div class="menu-item">
+                    <h4>${s.n}</h4>
+                    <p>${s.d}</p>
+                    <button class="ui-btn" style="width:100%" onclick="study(${s.cost}, ${s.g})">COST: $${s.cost}</button>
+                </div>
+            `).join('');
         }
-        checkLimits();
-        render();
-    }
 
-    function nextYear() {
-        state.age++;
-        state.energy = 100;
-        state.money += state.passive;
-        log(`Bonne année ! Tu as ${state.age} ans. Revenus passifs : +$${state.passive}`);
-        if(state.age > 85) { alert("Fin de vie paisible. Fortune : $" + state.money); location.reload(); }
-        render();
-    }
+        function work(pay) { state.money += pay; updateUI(); }
+        function study(cost, gain) { 
+            if(state.money >= cost) { state.money -= cost; state.skill += gain; updateUI(); }
+        }
 
-    function checkLimits() {
-        state.energy = Math.max(0, state.energy);
-        state.happy = Math.min(100, Math.max(0, state.happy));
-        if(state.happy <= 0) { alert("Dépression totale... Game Over."); location.reload(); }
-    }
+        // --- MOTEUR 3D (SIMPLIFIÉ & AMÉLIORÉ) ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x111122); // Nuit urbaine
 
-    function log(msg) {
-        const l = document.getElementById('event-log');
-        l.innerHTML = `> ${msg}<br>` + l.innerHTML;
-    }
+        // Lumière
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(10, 20, 10);
+        scene.add(light);
+        scene.add(new THREE.AmbientLight(0x404040, 2));
 
-    render();
-</script>
+        // Sol
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
+
+        // Génération de Ville
+        for(let i=0; i<60; i++) {
+            const h = 5 + Math.random() * 20;
+            const mat = new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff });
+            const box = new THREE.Mesh(new THREE.BoxGeometry(4, h, 4), mat);
+            box.position.set(Math.random()*200 - 100, h/2, Math.random()*200 - 100);
+            scene.add(box);
+        }
+
+        camera.position.set(30, 30, 30);
+        camera.lookAt(0,0,0);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            scene.rotation.y += 0.001; // Rotation lente de la ville
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        updateUI();
+        animate();
+    </script>
 </body>
 </html>
